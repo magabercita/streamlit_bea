@@ -24,11 +24,13 @@ with st.sidebar:
 
     # para darle los parametros al desplegable de la izquierda en el streamlit
     st.subheader('Models and parameters')
-    selected_model = st.sidebar.selectbox('Choose a Llama2 model', ['Llama2-7B', 'Llama2-13B'], key='selected_model')
+    selected_model = st.sidebar.selectbox('Choose a Llama2 model', ['Llama2-7B', 'Llama2-13B', 'Stable-Diffusion'], key='selected_model')
     if selected_model == 'Llama2-7B':
         llm = 'a16z-infra/llama7b-v2-chat:4f0a4744c7295c024a1de15e1a63c880d3da035fa1f49bfd344fe076074c8eea'
     elif selected_model == 'Llama2-13B':
         llm = 'a16z-infra/llama13b-v2-chat:df7690f1994d94e96ad9d568eac121aecf50684a0b0963b25a41cc40061269e5'
+    elif selected_model == 'Stable-Diffusion':
+        llm = "stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4"
     temperature = st.sidebar.slider('temperature', min_value=0.01, max_value=5.0, value=0.1, step=0.01)
     top_p = st.sidebar.slider('top_p', min_value=0.01, max_value=1.0, value=0.9, step=0.01)
     max_length = st.sidebar.slider('max_length', min_value=32, max_value=128, value=120, step=8)
@@ -69,16 +71,58 @@ if prompt := st.chat_input(disabled=not replicate_api):
     with st.chat_message("user"):
         st.write(prompt)
 
+
+## del notebook 'model_api_calls'
+import requests
+from PIL import Image
+from io import BytesIO
+
+def generate_diff_response(prompt_input):
+    output = api.run(
+        "stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
+        input={"prompt": prompt_input})
+        
+    return str(output).replace('[','').replace(']','').replace("'","")
+url = generate_diff_response(prompt)
+
+
 # Generate a new response if last message is not from assistant
 if st.session_state.messages[-1]["role"] != "assistant":
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            response = generate_llama2_response(prompt)
-            placeholder = st.empty()
-            full_response = ''
-            for item in response:
-                full_response += item
-                placeholder.markdown(full_response)
-            placeholder.markdown(full_response)
-    message = {"role": "assistant", "content": full_response}
-    st.session_state.messages.append(message)
+        if selected_model == 'Stable-Diffusion':
+            with st.chat_message("assistant"):
+                with st.spinner("Drawing..."):
+                    response = generate_diff_response(prompt)
+                    # Obtener la imagen de la URL
+                    response = requests.get(response)
+                    if response.status_code == 200:
+                        # Abrir la imagen desde los datos binarios en memoria
+                        image = Image.open(BytesIO(response.content))
+                        st.image(image) 
+                   
+
+        else:
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    response = generate_llama2_response(prompt)
+                    placeholder = st.empty()
+                    full_response = ''
+                    for item in response:
+                        full_response += item
+                        placeholder.markdown(full_response)
+                    placeholder.markdown(full_response)
+            message = {"role": "assistant", "content": full_response}
+            st.session_state.messages.append(message)
+
+# Generate a new response if last message is not from assistant
+# if st.session_state.messages[-1]["role"] != "assistant":
+#     with st.chat_message("assistant"):
+#         with st.spinner("Thinking..."):
+#             response = generate_llama2_response(prompt)
+#             placeholder = st.empty()
+#             full_response = ''
+#             for item in response:
+#                 full_response += item
+#                 placeholder.markdown(full_response)
+#             placeholder.markdown(full_response)
+#     message = {"role": "assistant", "content": full_response}
+#     st.session_state.messages.append(message)
