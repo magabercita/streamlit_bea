@@ -3,6 +3,9 @@
 import streamlit as st
 import replicate
 import os
+import requests
+from PIL import Image
+from io import BytesIO
 
 # App title
 st.set_page_config(page_title="🦙💬 Llama 2 Chatbot")
@@ -73,12 +76,9 @@ if prompt := st.chat_input(disabled=not replicate_api):
 
 
 ## del notebook 'model_api_calls'
-import requests
-from PIL import Image
-from io import BytesIO
 
 def generate_diff_response(prompt_input):
-    output = api.run(
+    output = replicate.run(
         "stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
         input={"prompt": prompt_input})
         
